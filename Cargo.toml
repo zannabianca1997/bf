@@ -1,0 +1,12 @@
+[package]
+name = "bf"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+thiserror = "1.0"
+clap = { version = "4.1.8", features = ["derive"] }
+read_char = "0.1.1"
+either = "1.8.1"
