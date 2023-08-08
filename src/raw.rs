@@ -5,11 +5,12 @@ use std::{
     mem::size_of,
     ops::{Index, IndexMut},
     slice,
-    str::from_utf8_unchecked,
+    str::{from_utf8_unchecked, FromStr},
     vec,
 };
 
 use static_assertions::const_assert_eq;
+use thiserror::Error;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[repr(u8)]
@@ -72,7 +73,7 @@ impl Display for Instruction {
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Program {
-    pub code: Box<[Instruction]>,
+    code: Box<[Instruction]>,
 }
 
 impl Program {
@@ -110,6 +111,42 @@ impl Program {
     pub fn len(&self) -> usize {
         self.code.len()
     }
+
+    pub fn from_chars(code: impl IntoIterator<Item = char>) -> Result<Self, UnmatchedParentheses> {
+        Self::from_instrs(
+            code.into_iter()
+                .filter_map(|ch| Instruction::try_from(ch).ok()),
+        )
+    }
+
+    pub fn from_bytes(code: impl IntoIterator<Item = u8>) -> Result<Self, UnmatchedParentheses> {
+        Self::from_instrs(
+            code.into_iter()
+                .filter_map(|ch| Instruction::try_from(ch).ok()),
+        )
+    }
+
+    pub fn from_instrs(
+        code: impl IntoIterator<Item = Instruction>,
+    ) -> Result<Self, UnmatchedParentheses> {
+        let code: Box<_> = code.into_iter().collect();
+
+        let mut par_count = 0usize;
+        for instr in code.iter() {
+            match instr {
+                Instruction::OpenLoop => par_count += 1,
+                Instruction::CloseLoop => {
+                    par_count = par_count.checked_sub(1).ok_or(UnmatchedParentheses)?
+                }
+                _ => (),
+            }
+        }
+        if par_count > 0 {
+            return Err(UnmatchedParentheses);
+        }
+
+        Ok(Self { code })
+    }
 }
 
 impl IntoIterator for Program {
@@ -146,11 +183,10 @@ impl From<Program> for Vec<Instruction> {
         value.code.into_vec()
     }
 }
-impl From<Vec<Instruction>> for Program {
-    fn from(value: Vec<Instruction>) -> Self {
-        Program {
-            code: value.into_boxed_slice(),
-        }
+impl TryFrom<Vec<Instruction>> for Program {
+    type Error = UnmatchedParentheses;
+    fn try_from(value: Vec<Instruction>) -> Result<Self, Self::Error> {
+        Self::from_instrs(value)
     }
 }
 impl From<Program> for Box<[Instruction]> {
@@ -158,8 +194,21 @@ impl From<Program> for Box<[Instruction]> {
         value.code
     }
 }
-impl From<Box<[Instruction]>> for Program {
-    fn from(value: Box<[Instruction]>) -> Self {
-        Program { code: value }
+impl TryFrom<Box<[Instruction]>> for Program {
+    type Error = UnmatchedParentheses;
+    fn try_from(value: Box<[Instruction]>) -> Result<Self, Self::Error> {
+        Self::from_instrs(value.into_vec())
     }
 }
+
+impl FromStr for Program {
+    type Err = UnmatchedParentheses;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Self::from_instrs(s.chars().filter_map(|ch| Instruction::try_from(ch).ok()))
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Error)]
+#[error("The brainfuck program has unmatched parentheses")]
+pub struct UnmatchedParentheses;
