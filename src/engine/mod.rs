@@ -49,7 +49,7 @@ pub trait Engine {
     /// Check what input the engine has
     fn input(&self) -> Option<u8>;
     /// Give input to the engine
-    /// If the engine has already some input, it is returned
+    /// If the engine has already some input, the old input is returned
     fn give_input(&mut self, input: u8) -> Option<u8>;
     /// Give input to the engine
     /// If the engine has already some input, do not do anything and return the input present as error
