@@ -35,7 +35,7 @@ impl Engine {
 
     fn advance(&mut self) {
         self.stack.last_mut().unwrap().1 += 1;
-        while {
+        while self.stack.len() > 1 && {
             let (blk, pos) = self.stack.last().unwrap();
             blk.0.len() == *pos
         } {
