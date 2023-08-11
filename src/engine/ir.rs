@@ -120,6 +120,10 @@ impl super::Engine for Engine {
                     Ok(super::State::Running)
                 }
             }
+            ir::Node::Noop => {
+                self.advance();
+                Ok(super::State::Running)
+            }
         }
     }
 

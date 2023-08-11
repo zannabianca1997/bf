@@ -1,10 +1,13 @@
 //! Intermediate representation for optimized execution
 
 use std::{
-    mem,
+    default, mem,
     num::{NonZeroIsize, NonZeroU8},
     ops::{Index, IndexMut},
 };
+
+mod optimizations;
+
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Program(pub Block);
 impl Program {
@@ -39,7 +42,9 @@ impl Program {
             }
         }
         let [body] = &mut stack[..] else {unreachable!()};
-        Program(Block(mem::take(body)))
+        let mut body = Block(mem::take(body));
+        body.optimize();
+        Program(body)
     }
 }
 
@@ -54,6 +59,22 @@ impl TryFrom<crate::raw::Program> for Program {
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
 pub struct Block(pub Vec<Node>);
 
+impl Block {
+    /// Optimize the block
+    ///
+    /// Return if something changed
+    pub fn optimize(&mut self) -> bool {
+        let mut changed = true;
+        let mut repeats = 0usize;
+        while changed {
+            changed = false;
+            repeats += 1;
+            self.0 = optimizations::optimize(mem::take(&mut self.0), &mut changed);
+        }
+        repeats > 1
+    }
+}
+
 impl Index<usize> for Block {
     type Output = Node;
 
@@ -67,9 +88,11 @@ impl IndexMut<usize> for Block {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
 #[non_exhaustive]
 pub enum Node {
+    #[default]
+    Noop,
     Shift(Shift),
     Add(Add),
     Output,
