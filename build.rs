@@ -130,7 +130,7 @@ fn list_examples() -> anyhow::Result<Examples> {
 
     let mut examples = HashMap::new();
 
-    'examples: for example_file in examples_dir.read_dir()? {
+    for example_file in examples_dir.read_dir()? {
         let example_file = example_file?;
         if example_file.path().extension() == Some(OsStr::new("toml"))
             && example_file
