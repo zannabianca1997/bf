@@ -60,7 +60,20 @@ impl Program {
         }
         let [body] = &mut stack[..] else {unreachable!()};
         let mut body = Block(mem::take(body));
-        body.optimize();
+        while body.optimize() {
+            // removing leading loops
+            let mut s = 0;
+            while matches!(body.0[s], Node::Loop(_)) {
+                s += 1;
+            }
+            // removing tail with no side-effects or inputs
+            let mut e = body.0.len().saturating_sub(1);
+            while body.0[e].diverge() == Some(false) && !body.0[e].does_output() {
+                e -= 1;
+            }
+            body = Block(body.0.drain(s..=e).collect())
+        }
+
         Program(body)
     }
 }
@@ -184,6 +197,33 @@ impl Node {
                 ),
                 offset: offset + additional_offset,
             }),
+        }
+    }
+
+    fn does_input(&self) -> bool {
+        match self {
+            Node::Output(_) => true,
+            Node::Loop(Loop {
+                body: Block(nodes), ..
+            }) => nodes.iter().any(Node::does_output),
+            Node::Noop | Node::Shift(_) | Node::Add(_) | Node::Input(_) => false,
+        }
+    }
+    fn does_output(&self) -> bool {
+        match self {
+            Node::Output(_) => true,
+            Node::Loop(Loop {
+                body: Block(nodes), ..
+            }) => nodes.iter().any(Node::does_output),
+            Node::Noop | Node::Shift(_) | Node::Add(_) | Node::Input(_) => false,
+        }
+    }
+    fn diverge(&self) -> Option<bool> {
+        match self {
+            Node::Noop | Node::Shift(_) | Node::Add(_) | Node::Output(_) | Node::Input(_) => {
+                Some(false)
+            }
+            Node::Loop(_) => None, // TODO: More checks to identify diverging loops
         }
     }
 }
