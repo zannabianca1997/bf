@@ -18,7 +18,7 @@ pub struct Engine {
 impl Engine {
     #[inline]
     #[must_use]
-    fn mem_curr(&self) -> Result<&u8, RTError> {
+    fn get_mem_curr(&self) -> Result<&u8, RTError> {
         if self.mp < 0 {
             Err(RTError::MemNegativeOut)
         } else {
@@ -27,11 +27,20 @@ impl Engine {
     }
     #[inline]
     #[must_use]
-    fn mem_curr_mut(&mut self) -> Result<&mut u8, RTError> {
+    fn get_mem_curr_mut(&mut self) -> Result<&mut u8, RTError> {
         if self.mp < 0 {
             Err(RTError::MemNegativeOut)
         } else {
             Ok(self.mem.get_mut(self.mp as usize))
+        }
+    }
+    #[inline]
+    #[must_use]
+    fn set_mem_curr(&mut self, value: u8) -> Result<(), RTError> {
+        if self.mp < 0 {
+            Err(RTError::MemNegativeOut)
+        } else {
+            Ok(self.mem.set(self.mp as usize, value))
         }
     }
 }
@@ -70,30 +79,30 @@ impl super::Engine for Engine {
                 State::Running
             }
             raw::Instruction::Add => {
-                *self.mem_curr_mut()? = self.mem_curr()?.wrapping_add(1);
+                self.set_mem_curr(self.get_mem_curr()?.wrapping_add(1))?;
                 self.ip += 1;
                 State::Running
             }
             raw::Instruction::Sub => {
-                *self.mem_curr_mut()? = self.mem_curr()?.wrapping_sub(1);
+                self.set_mem_curr(self.get_mem_curr()?.wrapping_sub(1))?;
                 self.ip += 1;
                 State::Running
             }
             raw::Instruction::Output => {
-                let out = *self.mem_curr()?;
+                let out = *self.get_mem_curr()?;
                 self.ip += 1;
                 State::Stopped(StopState::HasOutput(out))
             }
             raw::Instruction::Input => match self.input.take() {
                 Some(input) => {
-                    *self.mem_curr_mut()? = input;
+                    self.set_mem_curr(input)?;
                     self.ip += 1;
                     State::Running
                 }
                 None => State::Stopped(StopState::NeedInput),
             },
             raw::Instruction::OpenLoop => {
-                if *self.mem_curr()? == 0 {
+                if *self.get_mem_curr()? == 0 {
                     let mut count = 1usize;
                     // go to the matching ]
                     while count > 0 {
@@ -110,7 +119,7 @@ impl super::Engine for Engine {
                 State::Running
             }
             raw::Instruction::CloseLoop => {
-                if *self.mem_curr()? != 0 {
+                if *self.get_mem_curr()? != 0 {
                     let mut count = 1usize;
                     // go to the matching [
                     while count > 0 {
