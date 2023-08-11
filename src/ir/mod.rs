@@ -1,10 +1,16 @@
 //! Intermediate representation for optimized execution
 
 use std::{
+    fmt::{Display, Write},
     mem,
     num::{NonZeroIsize, NonZeroU8},
     ops::{Index, IndexMut},
+    str::FromStr,
 };
+
+use indenter::indented;
+
+use crate::raw;
 
 mod optimizations;
 
@@ -59,11 +65,28 @@ impl Program {
     }
 }
 
+impl Display for Program {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        for n in &self.0 .0 {
+            writeln!(f, "{n}")?
+        }
+        Ok(())
+    }
+}
+
 impl TryFrom<crate::raw::Program> for Program {
     type Error = !;
 
     fn try_from(value: crate::raw::Program) -> Result<Self, Self::Error> {
         Ok(Self::from_raw(value))
+    }
+}
+
+impl FromStr for Program {
+    type Err = <raw::Program as FromStr>::Err;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Ok(Self::try_from(s.parse::<raw::Program>()?).unwrap())
     }
 }
 
@@ -110,6 +133,18 @@ pub enum Node {
     Input(Input),
     Loop(Loop),
 }
+impl Display for Node {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Node::Noop => write!(f, "noop"),
+            Node::Shift(c) => write!(f, "{c}"),
+            Node::Add(c) => write!(f, "{c}"),
+            Node::Output(c) => write!(f, "{c}"),
+            Node::Input(c) => write!(f, "{c}"),
+            Node::Loop(c) => write!(f, "{c}"),
+        }
+    }
+}
 
 impl Node {
     #[must_use]
@@ -126,25 +161,55 @@ impl Node {
 pub struct Shift {
     pub amount: NonZeroIsize,
 }
+impl Display for Shift {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "shift\t{}", self.amount)
+    }
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Add {
     pub amount: NonZeroU8,
     pub offset: isize,
 }
+impl Display for Add {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "add\t{}\t@{}", self.amount, self.offset)
+    }
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Input {
     pub offset: isize,
+}
+impl Display for Input {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "input\t\t@{}", self.offset)
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Output {
     pub offset: isize,
 }
+impl Display for Output {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "output\t\t@{}", self.offset)
+    }
+}
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Loop {
     pub body: Block,
     pub offset: isize,
+}
+impl Display for Loop {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        writeln!(f, "loop\t@{} [", self.offset)?;
+        for node in &self.body.0 {
+            writeln!(indented(f), "{}", node)?
+        }
+        write!(f, "]")?;
+        Ok(())
+    }
 }

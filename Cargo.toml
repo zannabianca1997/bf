@@ -11,7 +11,10 @@ name = "examples"
 harness = false
 
 [dependencies]
+anyhow = "1.0.72"
+clap = { version = "4.3.21", features = ["derive"] }
 either = "1.9.0"
+indenter = "0.3.3"
 static_assertions = "1.1.0"
 thiserror = "1.0.44"
 

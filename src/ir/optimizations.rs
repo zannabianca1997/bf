@@ -63,10 +63,12 @@ fn optimize_n<const N: usize>(
     changed: &mut bool,
     optimizations: &'static [fn([Node; N]) -> Either<[Node; N], Vec<Node>>],
 ) -> Vec<Node> {
-    if nodes.len() < N {
-        return nodes;
-    }
     for i in 0..N {
+        // fast exit if we emptied the list
+        if nodes.len() < N {
+            return nodes;
+        }
+
         let (prefix, postfix) = nodes.split_at_mut(i);
         let (chunks, postfix) = postfix.as_chunks_mut::<N>();
         if chunks.is_empty() {
