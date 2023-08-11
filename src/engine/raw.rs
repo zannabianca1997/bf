@@ -2,8 +2,6 @@
 //!
 //! This is used as baseline, and to check outputs
 
-use std::iter::repeat;
-
 use crate::raw;
 
 use super::{mem::Memory, ProgrammableEngine, RTError, State, StopState};
