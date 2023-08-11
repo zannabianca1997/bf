@@ -10,7 +10,7 @@ use either::Either::{self, Left, Right};
 use super::{Add, Loop, Node, Shift};
 
 const OPTIMIZATIONS_1: &[fn([Node; 1]) -> Either<[Node; 1], Vec<Node>>] = &[recurse, remove_noops];
-const OPTIMIZATIONS_2: &[fn([Node; 2]) -> Either<[Node; 2], Vec<Node>>] = &[collate];
+const OPTIMIZATIONS_2: &[fn([Node; 2]) -> Either<[Node; 2], Vec<Node>>] = &[collate, retard_shifts];
 
 fn recurse(node: [Node; 1]) -> Either<[Node; 1], Vec<Node>> {
     match node {
@@ -49,6 +49,16 @@ fn collate(nodes: [Node; 2]) -> Either<[Node; 2], Vec<Node>> {
             Some(amount) => vec![Node::Add(Add { amount, offset: o1 })],
             None => vec![],
         }),
+        nodes => Left(nodes),
+    }
+}
+
+fn retard_shifts(nodes: [Node; 2]) -> Either<[Node; 2], Vec<Node>> {
+    match nodes {
+        [Node::Shift(Shift { amount }), node] => Right(vec![
+            node.shifted(amount.get()),
+            Node::Shift(Shift { amount }),
+        ]),
         nodes => Left(nodes),
     }
 }

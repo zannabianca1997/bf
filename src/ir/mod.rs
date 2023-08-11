@@ -155,6 +155,37 @@ impl Node {
             None
         }
     }
+
+    /// return the instruction shifted of the given amount
+    /// >{instr}< ~ {instr.shifted(1)}
+    fn shifted(self, additional_offset: isize) -> Self {
+        match self {
+            Node::Noop => Node::Noop,
+            Node::Shift(shift) => Node::Shift(shift),
+            Node::Add(Add { amount, offset }) => Node::Add(Add {
+                amount,
+                offset: offset + additional_offset,
+            }),
+            Node::Output(Output { offset }) => Node::Output(Output {
+                offset: offset + additional_offset,
+            }),
+            Node::Input(Input { offset }) => Node::Input(Input {
+                offset: offset + additional_offset,
+            }),
+            Node::Loop(Loop {
+                body: Block(nodes),
+                offset,
+            }) => Node::Loop(Loop {
+                body: Block(
+                    nodes
+                        .into_iter()
+                        .map(|n| n.shifted(additional_offset))
+                        .collect(),
+                ),
+                offset: offset + additional_offset,
+            }),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
