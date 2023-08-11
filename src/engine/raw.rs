@@ -27,15 +27,6 @@ impl Engine {
     }
     #[inline]
     #[must_use]
-    fn get_mem_curr_mut(&mut self) -> Result<&mut u8, RTError> {
-        if self.mp < 0 {
-            Err(RTError::MemNegativeOut)
-        } else {
-            Ok(self.mem.get_mut(self.mp as usize))
-        }
-    }
-    #[inline]
-    #[must_use]
     fn set_mem_curr(&mut self, value: u8) -> Result<(), RTError> {
         if self.mp < 0 {
             Err(RTError::MemNegativeOut)
