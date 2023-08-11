@@ -32,7 +32,10 @@ struct IOExample {
     out: Either<Vec<u8>, String>,
 }
 
-static ENGINES: &[(&str, &str)] = &[("raw", "bf::engine::raw::Engine")];
+static ENGINES: &[(&str, &str)] = &[
+    ("raw", "bf::engine::raw::Engine"),
+    ("ir", "bf::engine::ir::Engine"),
+];
 
 fn tests() -> proc_macro2::TokenStream {
     let mut tokens = proc_macro2::TokenStream::new();

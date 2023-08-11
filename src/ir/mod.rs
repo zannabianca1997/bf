@@ -3,9 +3,10 @@
 use std::{
     mem,
     num::{NonZeroIsize, NonZeroU8},
+    ops::{Index, IndexMut},
 };
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct Program(Block);
+pub struct Program(pub Block);
 impl Program {
     fn from_raw(value: crate::raw::Program) -> Program {
         let mut stack: Vec<Vec<Node>> = vec![vec![]];
@@ -50,8 +51,21 @@ impl TryFrom<crate::raw::Program> for Program {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct Block(Vec<Node>);
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
+pub struct Block(pub Vec<Node>);
+
+impl Index<usize> for Block {
+    type Output = Node;
+
+    fn index(&self, index: usize) -> &Self::Output {
+        self.0.index(index)
+    }
+}
+impl IndexMut<usize> for Block {
+    fn index_mut(&mut self, index: usize) -> &mut Self::Output {
+        self.0.index_mut(index)
+    }
+}
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[non_exhaustive]
@@ -63,17 +77,28 @@ pub enum Node {
     Loop(Loop),
 }
 
+impl Node {
+    #[must_use]
+    pub fn as_block(&self) -> Option<&Block> {
+        if let Self::Loop(Loop { body }) = self {
+            Some(body)
+        } else {
+            None
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Shift {
-    amount: NonZeroIsize,
+    pub amount: NonZeroIsize,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Add {
-    amount: NonZeroU8,
+    pub amount: NonZeroU8,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Loop {
-    body: Block,
+    pub body: Block,
 }
