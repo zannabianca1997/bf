@@ -6,6 +6,7 @@ use crate::ir::{self, Add, Block, Loop, Shift};
 
 use super::{mem::Memory, ProgrammableEngine, RTError};
 
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Engine {
     stack: Vec<(Block, usize)>,
     mem: Memory,

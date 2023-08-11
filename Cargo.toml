@@ -3,6 +3,13 @@ name = "bf"
 version = "0.1.0"
 edition = "2021"
 
+[lib]
+bench = false
+
+[[bench]]
+name = "examples"
+harness = false
+
 [dependencies]
 either = "1.9.0"
 static_assertions = "1.1.0"
@@ -21,3 +28,6 @@ serde = { version = "1.0.183", features = ["derive"] }
 serde_yaml = "0.9.25"
 syn = "2.0.28"
 toml = "0.7.6"
+
+[dev-dependencies]
+criterion = { version = "0.4", features = ["html_reports"] }

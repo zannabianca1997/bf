@@ -53,4 +53,4 @@ fn test_engine<E>(
     }
 }
 
-include!(env!("EXAMPLES"));
+include!(env!("TEST_EXAMPLES"));

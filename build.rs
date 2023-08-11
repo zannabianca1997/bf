@@ -15,11 +15,6 @@ use proc_macro2::Ident;
 use quote::{format_ident, quote, ToTokens};
 use serde::Deserialize;
 
-fn main() -> anyhow::Result<()> {
-    examples()?;
-    Ok(())
-}
-
 fn default_empty() -> Either<Vec<u8>, String> {
     Left(vec![])
 }
@@ -37,7 +32,7 @@ static ENGINES: &[(&str, &str)] = &[
     ("ir", "bf::engine::ir::Engine"),
 ];
 
-fn tests() -> proc_macro2::TokenStream {
+fn test_fns() -> proc_macro2::TokenStream {
     let mut tokens = proc_macro2::TokenStream::new();
     for (name, path) in ENGINES {
         let name = format_ident!("engine_{}", name);
@@ -53,24 +48,45 @@ fn tests() -> proc_macro2::TokenStream {
     tokens
 }
 
+fn bench_fns(source: &str, io_example: &str) -> proc_macro2::TokenStream {
+    let mut tokens = proc_macro2::TokenStream::new();
+    for (name, path) in ENGINES {
+        let fn_name = format_ident!("engine_{}", name);
+        let path = syn::parse_str::<syn::Path>(path).unwrap();
+
+        quote!(
+            pub fn #fn_name (c: &mut criterion::Criterion) {
+                super::super::bench_engine::<#path>(c, #source, #io_example, #name, super::CODE, INPUT)
+            }
+        ).to_tokens(&mut tokens)
+    }
+    tokens
+}
+
+#[derive(Debug, Clone, Copy)]
+struct AsTest<T>(T);
+#[derive(Debug, Clone, Copy)]
+struct AsBench<T>(T);
+
 struct Example {
+    name: String,
     code: String,
     io: HashMap<Ident, IOExample>,
 }
-impl ToTokens for Example {
+impl ToTokens for AsTest<&Example> {
     fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
-        let code = &self.code;
+        let code = &self.0.code;
         quote!(
             static CODE: &str = #code;
         )
         .to_tokens(tokens);
-        for (name, IOExample { r#in, out }) in &self.io {
+        for (name, IOExample { r#in, out }) in &self.0.io {
             let [r#in, out] = [r#in, out].map(|b| {
                 b.as_ref()
                     .map_either(Vec::as_slice, String::as_bytes)
                     .into_inner()
             });
-            let tests = tests();
+            let tests = test_fns();
             quote!(
                 mod #name {
                     static INPUT: &[u8] = &[#(# r#in),*];
@@ -83,11 +99,36 @@ impl ToTokens for Example {
         }
     }
 }
+impl ToTokens for AsBench<&Example> {
+    fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
+        let code = &self.0.code;
+        quote!(
+            static CODE: &str = #code;
+        )
+        .to_tokens(tokens);
+        for (name, IOExample { r#in, .. }) in &self.0.io {
+            let r#in = r#in
+                .as_ref()
+                .map_either(Vec::as_slice, String::as_bytes)
+                .into_inner();
+            let benches = bench_fns(&self.0.name, &name.to_string());
+            quote!(
+                pub mod #name {
+                    static INPUT: &[u8] = &[#(# r#in),*];
+
+                    #benches
+                }
+            )
+            .to_tokens(tokens)
+        }
+    }
+}
 
 struct Examples(HashMap<Ident, Example>);
-impl ToTokens for Examples {
+impl ToTokens for AsTest<&Examples> {
     fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
-        for (name, example) in &self.0 {
+        for (name, example) in &self.0 .0 {
+            let example = AsTest(example);
             quote!(
                 mod #name {
                     #example
@@ -97,9 +138,38 @@ impl ToTokens for Examples {
         }
     }
 }
+impl ToTokens for AsBench<&Examples> {
+    fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
+        for (name, example) in &self.0 .0 {
+            let example = AsBench(example);
+            quote!(
+                pub mod #name {
+                    #example
+                }
+            )
+            .to_tokens(tokens);
+            let examples = example.0.io.iter().flat_map(|(example, _)| {
+                ENGINES.into_iter().map(move |(engine, _)| {
+                    let engine = format_ident!("engine_{}", engine);
+                    quote!(#name::#example::#engine)
+                })
+            });
+            quote!(criterion_group!(#name, #(#examples),*);).to_tokens(tokens);
+        }
+        let names = self.0 .0.iter().map(|(n, _)| n);
+        quote!(criterion_main!(#(#names),*);).to_tokens(tokens)
+    }
+}
 
-fn examples() -> anyhow::Result<()> {
+fn main() -> anyhow::Result<()> {
     let examples = list_examples().context("While reading examples")?;
+    tests(&examples)?;
+    benches(&examples)?;
+    Ok(())
+}
+
+fn tests(examples: &Examples) -> anyhow::Result<()> {
+    let examples = AsTest(examples);
 
     let file = PathBuf::from(env::var_os("OUT_DIR").unwrap())
         .join("tests")
@@ -119,13 +189,38 @@ fn examples() -> anyhow::Result<()> {
     };
 
     fs::write(&file, code)?;
-    cargo_emit::rustc_env!("EXAMPLES", "{}", file.display());
+    cargo_emit::rustc_env!("TEST_EXAMPLES", "{}", file.display());
+    Ok(())
+}
+
+fn benches(examples: &Examples) -> anyhow::Result<()> {
+    let examples = AsBench(examples);
+
+    let file = PathBuf::from(env::var_os("OUT_DIR").unwrap())
+        .join("benches")
+        .join("examples.rs");
+    fs::create_dir_all(file.parent().unwrap())?;
+
+    let code = quote!(
+        # examples
+    );
+
+    let code = match syn::parse2::<syn::File>(code.clone()) {
+        Ok(file) => prettyplease::unparse(&file),
+        Err(err) => {
+            cargo_emit::warning!("The example code did not parse correctly as file: {}", err);
+            code.to_string()
+        }
+    };
+
+    fs::write(&file, code)?;
+    cargo_emit::rustc_env!("BENCH_EXAMPLES", "{}", file.display());
     Ok(())
 }
 
 fn list_examples() -> anyhow::Result<Examples> {
     let examples_dir = PathBuf::from(env::var_os("CARGO_MANIFEST_DIR").unwrap())
-        .join("tests")
+        .join("bf-sources")
         .join("examples");
     cargo_emit::rerun_if_changed!("{}", examples_dir.display());
     let bf_sources_dir =
@@ -148,10 +243,13 @@ fn list_examples() -> anyhow::Result<Examples> {
                 .with_extension("b");
             cargo_emit::rerun_if_changed!("{}", source_file.display());
 
-            let name = format_ident!(
-                "{}",
-                example_file.path().file_stem().unwrap().to_str().unwrap()
-            );
+            let name = example_file
+                .path()
+                .file_stem()
+                .unwrap()
+                .to_str()
+                .unwrap()
+                .to_string();
             let io =
                 toml::from_str::<HashMap<String, IOExample>>(&read_to_string(example_file.path())?)
                     .context(format!(
@@ -163,7 +261,7 @@ fn list_examples() -> anyhow::Result<Examples> {
                     .collect();
             let code = read_to_string(source_file)?;
 
-            examples.insert(name, Example { io, code });
+            examples.insert(format_ident!("{}", name), Example { name, io, code });
         }
     }
 
