@@ -67,18 +67,20 @@ impl super::Engine for Engine {
         };
 
         let get_mem = |mem: &Memory, offset: isize| {
-            if *mp < 0 {
+            let mp = *mp + offset;
+            if mp < 0 {
                 Err(RTError::MemNegativeOut)
             } else {
-                Ok(*mem.get(*mp as usize))
+                Ok(*mem.get(mp as usize))
             }
         };
 
         let set_mem = |mem: &mut Memory, offset: isize, value: u8| {
-            if *mp < 0 {
+            let mp = *mp + offset;
+            if mp < 0 {
                 Err(RTError::MemNegativeOut)
             } else {
-                Ok(mem.set(*mp as usize, value))
+                Ok(mem.set(mp as usize, value))
             }
         };
 
