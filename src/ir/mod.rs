@@ -18,7 +18,10 @@ impl Program {
                 crate::raw::Instruction::OpenLoop => stack.push(vec![]),
                 crate::raw::Instruction::CloseLoop => {
                     let body = Block(stack.pop().unwrap());
-                    stack.last_mut().unwrap().push(Node::Loop(Loop { body }))
+                    stack
+                        .last_mut()
+                        .unwrap()
+                        .push(Node::Loop(Loop { body, offset: 0 }))
                 }
 
                 crate::raw::Instruction::ShiftRight => {
@@ -33,16 +36,20 @@ impl Program {
                 }
                 crate::raw::Instruction::Add => stack.last_mut().unwrap().push(Node::Add(Add {
                     amount: NonZeroU8::new(1).unwrap(),
+                    offset: 0,
                 })),
                 crate::raw::Instruction::Sub => stack.last_mut().unwrap().push(Node::Add(Add {
                     amount: NonZeroU8::new(255).unwrap(),
+                    offset: 0,
                 })),
-                crate::raw::Instruction::Output => {
-                    stack.last_mut().unwrap().push(Node::Output(Output {}))
-                }
-                crate::raw::Instruction::Input => {
-                    stack.last_mut().unwrap().push(Node::Input(Input {}))
-                }
+                crate::raw::Instruction::Output => stack
+                    .last_mut()
+                    .unwrap()
+                    .push(Node::Output(Output { offset: 0 })),
+                crate::raw::Instruction::Input => stack
+                    .last_mut()
+                    .unwrap()
+                    .push(Node::Input(Input { offset: 0 })),
             }
         }
         let [body] = &mut stack[..] else {unreachable!()};
@@ -107,7 +114,7 @@ pub enum Node {
 impl Node {
     #[must_use]
     pub fn as_block(&self) -> Option<&Block> {
-        if let Self::Loop(Loop { body }) = self {
+        if let Self::Loop(Loop { body, .. }) = self {
             Some(body)
         } else {
             None
@@ -123,15 +130,21 @@ pub struct Shift {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Add {
     pub amount: NonZeroU8,
+    pub offset: isize,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct Input {}
+pub struct Input {
+    pub offset: isize,
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct Output {}
+pub struct Output {
+    pub offset: isize,
+}
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Loop {
     pub body: Block,
+    pub offset: isize,
 }

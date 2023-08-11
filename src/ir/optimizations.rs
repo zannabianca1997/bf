@@ -14,11 +14,11 @@ const OPTIMIZATIONS_2: &[fn([Node; 2]) -> Either<[Node; 2], Vec<Node>>] = &[coll
 
 fn recurse(node: [Node; 1]) -> Either<[Node; 1], Vec<Node>> {
     match node {
-        [Node::Loop(Loop { mut body })] => {
+        [Node::Loop(Loop { mut body, offset })] => {
             if body.optimize() {
-                Right(vec![Node::Loop(Loop { body })])
+                Right(vec![Node::Loop(Loop { body, offset })])
             } else {
-                Left([Node::Loop(Loop { body })])
+                Left([Node::Loop(Loop { body, offset })])
             }
         }
         node => Left(node),
@@ -39,12 +39,16 @@ fn collate(nodes: [Node; 2]) -> Either<[Node; 2], Vec<Node>> {
                 None => vec![],
             })
         }
-        [Node::Add(Add { amount: a1 }), Node::Add(Add { amount: a2 })] => {
-            Right(match NonZeroU8::new(u8::wrapping_add(a1.get(), a2.get())) {
-                Some(amount) => vec![Node::Add(Add { amount })],
-                None => vec![],
-            })
-        }
+        [Node::Add(Add {
+            amount: a1,
+            offset: o1,
+        }), Node::Add(Add {
+            amount: a2,
+            offset: o2,
+        })] if o1 == o2 => Right(match NonZeroU8::new(u8::wrapping_add(a1.get(), a2.get())) {
+            Some(amount) => vec![Node::Add(Add { amount, offset: o1 })],
+            None => vec![],
+        }),
         nodes => Left(nodes),
     }
 }

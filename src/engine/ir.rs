@@ -14,48 +14,6 @@ pub struct Engine {
     input: Option<u8>,
 }
 
-impl Engine {
-    #[inline]
-    #[must_use]
-    fn get_mem_curr(&self) -> Result<&u8, RTError> {
-        if self.mp < 0 {
-            Err(RTError::MemNegativeOut)
-        } else {
-            Ok(self.mem.get(self.mp as usize))
-        }
-    }
-    #[inline]
-    #[must_use]
-    fn set_mem_curr(&mut self, value: u8) -> Result<(), RTError> {
-        if self.mp < 0 {
-            Err(RTError::MemNegativeOut)
-        } else {
-            Ok(self.mem.set(self.mp as usize, value))
-        }
-    }
-
-    fn advance(&mut self) {
-        self.stack.last_mut().unwrap().1 += 1;
-        while self.stack.len() > 1 && {
-            let (blk, pos) = self.stack.last().unwrap();
-            blk.0.len() == *pos
-        } {
-            let (blk, _) = self.stack.pop().unwrap();
-            let (sup, pos) = self.stack.last_mut().unwrap();
-            match &mut sup.0[*pos] {
-                ir::Node::Loop(Loop { body }) => {
-                    // putting back the body
-                    *body = blk;
-                    // leaving pos as it is, so the loop is reexamined
-                }
-                other => {
-                    unreachable!("{other:?} cannot be entered, so it should not be popped into")
-                }
-            }
-        }
-    }
-}
-
 impl ProgrammableEngine for Engine {
     type Program = ir::Program;
 
@@ -80,48 +38,94 @@ impl super::Engine for Engine {
             }
         }
         // storing it in case we need to read it keeping a mutable ref to self
-        let current_mem = self.get_mem_curr().map(|x| *x);
+        let Self {
+            stack,
+            mem,
+            mp,
+            input,
+        } = self;
+
+        let advance = |stack: &mut Vec<(Block, usize)>| {
+            stack.last_mut().unwrap().1 += 1;
+            while stack.len() > 1 && {
+                let (blk, pos) = stack.last().unwrap();
+                blk.0.len() == *pos
+            } {
+                let (blk, _) = stack.pop().unwrap();
+                let (sup, pos) = stack.last_mut().unwrap();
+                match &mut sup.0[*pos] {
+                    ir::Node::Loop(Loop { body, .. }) => {
+                        // putting back the body
+                        *body = blk;
+                        // leaving pos as it is, so the loop is reexamined
+                    }
+                    other => {
+                        unreachable!("{other:?} cannot be entered, so it should not be popped into")
+                    }
+                }
+            }
+        };
+
+        let get_mem = |mem: &Memory, offset: isize| {
+            if *mp < 0 {
+                Err(RTError::MemNegativeOut)
+            } else {
+                Ok(*mem.get(*mp as usize))
+            }
+        };
+
+        let set_mem = |mem: &mut Memory, offset: isize, value: u8| {
+            if *mp < 0 {
+                Err(RTError::MemNegativeOut)
+            } else {
+                Ok(mem.set(*mp as usize, value))
+            }
+        };
+
         match {
-            let (blk, pos) = self.stack.last_mut().unwrap();
+            let (blk, pos) = stack.last_mut().unwrap();
             &mut blk.0[*pos]
         } {
             ir::Node::Shift(Shift { amount }) => {
-                self.mp += amount.get();
-                self.advance();
+                *mp += amount.get();
+                advance(stack);
                 Ok(super::State::Running)
             }
-            ir::Node::Add(Add { amount }) => {
-                let amount = *amount;
-                self.set_mem_curr(self.get_mem_curr()?.wrapping_add(amount.get()))?;
-                self.advance();
+            ir::Node::Add(Add { amount, offset }) => {
+                set_mem(
+                    mem,
+                    *offset,
+                    get_mem(mem, *offset)?.wrapping_add(amount.get()),
+                )?;
+                advance(stack);
                 Ok(super::State::Running)
             }
-            ir::Node::Output(Output {}) => {
-                let out = *self.get_mem_curr()?;
-                self.advance();
+            ir::Node::Output(Output { offset }) => {
+                let out = get_mem(mem, *offset)?;
+                advance(stack);
                 Ok(super::State::Stopped(super::StopState::HasOutput(out)))
             }
-            ir::Node::Input(Input {}) => {
-                if let Some(input) = self.input.take() {
-                    self.set_mem_curr(input)?;
-                    self.advance();
+            ir::Node::Input(Input { offset }) => {
+                if let Some(input) = input.take() {
+                    set_mem(mem, *offset, input)?;
+                    advance(stack);
                     Ok(super::State::Running)
                 } else {
                     Ok(super::State::Stopped(super::StopState::NeedInput))
                 }
             }
-            ir::Node::Loop(Loop { body }) => {
-                if current_mem? != 0 {
+            ir::Node::Loop(Loop { body, offset }) => {
+                if get_mem(mem, *offset)? != 0 {
                     let blk = std::mem::take(body);
-                    self.stack.push((blk, 0)); // opening the new frame
+                    stack.push((blk, 0)); // opening the new frame
                     Ok(super::State::Running)
                 } else {
-                    self.advance();
+                    advance(stack);
                     Ok(super::State::Running)
                 }
             }
             ir::Node::Noop => {
-                self.advance();
+                advance(stack);
                 Ok(super::State::Running)
             }
         }
