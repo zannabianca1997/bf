@@ -1,0 +1,15 @@
+[no_input]
+in = [0]
+out = []
+[sorted]
+in = [1, 2, 3, 4, 5, 6, 7, 8, 9, 0]
+out = [1, 2, 3, 4, 5, 6, 7, 8, 9]
+[reversed]
+in = [9, 8, 7, 6, 5, 4, 3, 2, 1, 0]
+out = [1, 2, 3, 4, 5, 6, 7, 8, 9]
+[with_repetitions]
+in = [75, 45, 75, 23, 138, 2, 23, 5, 67, 0]
+out = [2, 5, 23, 23, 45, 67, 75, 75, 138]
+[alpha]
+in = "The quick brown fox jumps over the lazy dog\u0000"
+out = "        Tabcdeeefghhijklmnoooopqrrstuuvwxyz"

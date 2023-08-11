@@ -212,3 +212,17 @@ impl FromStr for Program {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Error)]
 #[error("The brainfuck program has unmatched parentheses")]
 pub struct UnmatchedParentheses;
+
+#[cfg(test)]
+mod tests {
+    use super::Program;
+
+    #[test]
+    fn empty() {
+        let _: Program = "".parse().unwrap();
+    }
+    #[test]
+    fn parentheses() {
+        let _: Program = "[]".parse().unwrap();
+    }
+}

@@ -95,4 +95,7 @@ pub trait ProgrammableEngine {
     }
 }
 
+mod mem;
+
+pub mod ir;
 pub mod raw;

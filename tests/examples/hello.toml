@@ -1,0 +1,5 @@
+[no_input]
+out = "Hello World!\n"
+[will_ignore_input]
+in = "Ignore this"
+out = "Hello World!\n"

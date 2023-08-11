@@ -7,3 +7,17 @@ edition = "2021"
 either = "1.9.0"
 static_assertions = "1.1.0"
 thiserror = "1.0.44"
+
+
+[build-dependencies]
+anyhow = "1.0.72"
+cargo-emit = "0.2.1"
+either = { version = "1.9.0", features = ["serde"] }
+lazy-regex = "3.0.1"
+prettyplease = "0.2.12"
+proc-macro2 = "1.0.66"
+quote = "1.0.32"
+serde = { version = "1.0.183", features = ["derive"] }
+serde_yaml = "0.9.25"
+syn = "2.0.28"
+toml = "0.7.6"

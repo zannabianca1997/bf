@@ -6,14 +6,14 @@ use std::iter::repeat;
 
 use crate::raw;
 
-use super::{ProgrammableEngine, RTError, State, StopState};
+use super::{mem::Memory, ProgrammableEngine, RTError, State, StopState};
 
 /// Unoptimized engine running raw brainfuck
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Engine {
     program: raw::Program,
     ip: usize,
-    mem: Vec<u8>,
+    mem: super::mem::Memory,
     mp: isize,
     input: Option<u8>,
 }
@@ -24,7 +24,7 @@ impl Engine {
         if self.mp < 0 {
             Err(RTError::MemNegativeOut)
         } else {
-            Ok(self.mem.get(self.mp as usize).unwrap_or(&0))
+            Ok(self.mem.get(self.mp as usize))
         }
     }
     #[inline]
@@ -33,10 +33,7 @@ impl Engine {
         if self.mp < 0 {
             Err(RTError::MemNegativeOut)
         } else {
-            let l = self.mp as usize;
-            self.mem
-                .extend(repeat(0).take(l.saturating_sub(self.mem.len())));
-            Ok(&mut self.mem[l])
+            Ok(self.mem.get_mut(self.mp as usize))
         }
     }
 }
@@ -51,7 +48,7 @@ impl ProgrammableEngine for Engine {
         Self {
             program,
             ip: 0,
-            mem: vec![],
+            mem: Memory::new(),
             mp: 0,
             input: None,
         }
