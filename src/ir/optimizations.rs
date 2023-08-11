@@ -33,12 +33,14 @@ fn remove_noops(node: [Node; 1]) -> Either<[Node; 1], Vec<Node>> {
 
 fn collate(nodes: [Node; 2]) -> Either<[Node; 2], Vec<Node>> {
     match nodes {
+        // collating all shifts
         [Node::Shift(Shift { amount: a1 }), Node::Shift(Shift { amount: a2 })] => {
             Right(match NonZeroIsize::new(a1.get() + a2.get()) {
                 Some(amount) => vec![Node::Shift(Shift { amount })],
                 None => vec![],
             })
         }
+        // collating adds with the same offset
         [Node::Add(Add {
             amount: a1,
             offset: o1,
@@ -49,6 +51,12 @@ fn collate(nodes: [Node; 2]) -> Either<[Node; 2], Vec<Node>> {
             Some(amount) => vec![Node::Add(Add { amount, offset: o1 })],
             None => vec![],
         }),
+        // removing consecutive loops with the same offsets
+        [Node::Loop(Loop { body, offset: o1 }), Node::Loop(Loop { offset: o2, .. })]
+            if o1 == o2 =>
+        {
+            Right(vec![Node::Loop(Loop { body, offset: o1 })])
+        }
         nodes => Left(nodes),
     }
 }
