@@ -37,8 +37,12 @@ impl Program {
                 crate::raw::Instruction::Sub => stack.last_mut().unwrap().push(Node::Add(Add {
                     amount: NonZeroU8::new(255).unwrap(),
                 })),
-                crate::raw::Instruction::Output => stack.last_mut().unwrap().push(Node::Output),
-                crate::raw::Instruction::Input => stack.last_mut().unwrap().push(Node::Input),
+                crate::raw::Instruction::Output => {
+                    stack.last_mut().unwrap().push(Node::Output(Output {}))
+                }
+                crate::raw::Instruction::Input => {
+                    stack.last_mut().unwrap().push(Node::Input(Input {}))
+                }
             }
         }
         let [body] = &mut stack[..] else {unreachable!()};
@@ -95,8 +99,8 @@ pub enum Node {
     Noop,
     Shift(Shift),
     Add(Add),
-    Output,
-    Input,
+    Output(Output),
+    Input(Input),
     Loop(Loop),
 }
 
@@ -120,6 +124,12 @@ pub struct Shift {
 pub struct Add {
     pub amount: NonZeroU8,
 }
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct Input {}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct Output {}
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Loop {

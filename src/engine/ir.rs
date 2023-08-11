@@ -2,7 +2,7 @@
 //!
 //! This is used to check all the steps of the optimization
 
-use crate::ir::{self, Add, Block, Loop, Shift};
+use crate::ir::{self, Add, Block, Input, Loop, Output, Shift};
 
 use super::{mem::Memory, ProgrammableEngine, RTError};
 
@@ -96,12 +96,12 @@ impl super::Engine for Engine {
                 self.advance();
                 Ok(super::State::Running)
             }
-            ir::Node::Output => {
+            ir::Node::Output(Output {}) => {
                 let out = *self.get_mem_curr()?;
                 self.advance();
                 Ok(super::State::Stopped(super::StopState::HasOutput(out)))
             }
-            ir::Node::Input => {
+            ir::Node::Input(Input {}) => {
                 if let Some(input) = self.input.take() {
                     self.set_mem_curr(input)?;
                     self.advance();
