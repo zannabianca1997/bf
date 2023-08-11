@@ -1,9 +1,4 @@
-use std::{
-    collections::BTreeMap,
-    fmt::Debug,
-    str::from_utf8,
-    sync::{Mutex, RwLock},
-};
+use std::{collections::BTreeMap, fmt::Debug, str::from_utf8, sync::Mutex};
 
 use bf::{
     engine::{Engine, ProgrammableEngine},
