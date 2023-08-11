@@ -1,7 +1,7 @@
 //! Intermediate representation for optimized execution
 
 use std::{
-    default, mem,
+    mem,
     num::{NonZeroIsize, NonZeroU8},
     ops::{Index, IndexMut},
 };
