@@ -9,12 +9,13 @@ use std::{
 };
 
 use indenter::indented;
+use serde::{Deserialize, Serialize};
 
 use crate::raw;
 
 mod optimizations;
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub struct Program(pub Block);
 impl Program {
     fn from_raw(value: crate::raw::Program) -> Program {
@@ -103,7 +104,7 @@ impl FromStr for Program {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Default, Serialize, Deserialize)]
 pub struct Block(pub Vec<Node>);
 
 impl Block {
@@ -135,7 +136,7 @@ impl IndexMut<usize> for Block {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Default, Serialize, Deserialize)]
 #[non_exhaustive]
 pub enum Node {
     #[default]
@@ -226,9 +227,39 @@ impl Node {
             Node::Loop(_) => None, // TODO: More checks to identify diverging loops
         }
     }
+
+    /// check if two nodes can be exchanged
+    fn commute(&self, other: &Self) -> bool {
+        match (self, other) {
+            // Noop always commute
+            (Node::Noop, _) | (_, Node::Noop) => true,
+            // shift commute with himself, but with nothing else ( this will be handled with retarded shift)
+            (Node::Shift(_), Node::Shift(_)) => true,
+            (Node::Shift(_), Node::Add(_) | Node::Output(_) | Node::Input(_) | Node::Loop(_))
+            | (Node::Add(_) | Node::Output(_) | Node::Input(_) | Node::Loop(_), Node::Shift(_)) => {
+                false
+            }
+            // Add commute with IO and himself, but only if they refere to different memory positions
+            (
+                Node::Add(Add { offset: o1, .. }),
+                Node::Add(Add { offset: o2, .. })
+                | Node::Output(Output { offset: o2 })
+                | Node::Input(Input { offset: o2 }),
+            )
+            | (
+                Node::Output(Output { offset: o2 }) | Node::Input(Input { offset: o2 }),
+                Node::Add(Add { offset: o1, .. }),
+            ) => o1 != o2,
+            // input and output will never exchange positions
+            (Node::Output(_) | Node::Input(_), Node::Output(_) | Node::Input(_)) => false,
+
+            // If uncertain, do not commute
+            _ => false,
+        }
+    }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub struct Shift {
     pub amount: NonZeroIsize,
 }
@@ -238,7 +269,7 @@ impl Display for Shift {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub struct Add {
     pub amount: NonZeroU8,
     pub offset: isize,
@@ -249,7 +280,7 @@ impl Display for Add {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub struct Input {
     pub offset: isize,
 }
@@ -259,7 +290,7 @@ impl Display for Input {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub struct Output {
     pub offset: isize,
 }
@@ -269,7 +300,7 @@ impl Display for Output {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub struct Loop {
     pub body: Block,
     pub offset: isize,

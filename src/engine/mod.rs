@@ -1,6 +1,7 @@
 //! Brainfuck executors
 
 use either::Either::{self, Left, Right};
+use thiserror::Error;
 
 use crate::raw::UnmatchedParentheses;
 
@@ -20,9 +21,9 @@ pub enum State {
 }
 
 /// Runtime brainfuck error
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Error)]
 pub enum RTError {
-    /// The memory pointer exited the memory from below
+    #[error("The memory pointer exited the memory from below")]
     MemNegativeOut,
 }
 

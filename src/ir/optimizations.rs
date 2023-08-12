@@ -10,7 +10,8 @@ use either::Either::{self, Left, Right};
 use super::{Add, Loop, Node, Shift};
 
 const OPTIMIZATIONS_1: &[fn([Node; 1]) -> Either<[Node; 1], Vec<Node>>] = &[recurse, remove_noops];
-const OPTIMIZATIONS_2: &[fn([Node; 2]) -> Either<[Node; 2], Vec<Node>>] = &[collate, retard_shifts];
+const OPTIMIZATIONS_2: &[fn([Node; 2]) -> Either<[Node; 2], Vec<Node>>] =
+    &[collate, retard_shifts, sort_ops];
 
 fn recurse(node: [Node; 1]) -> Either<[Node; 1], Vec<Node>> {
     match node {
@@ -60,7 +61,6 @@ fn collate(nodes: [Node; 2]) -> Either<[Node; 2], Vec<Node>> {
         nodes => Left(nodes),
     }
 }
-
 fn retard_shifts(nodes: [Node; 2]) -> Either<[Node; 2], Vec<Node>> {
     match nodes {
         [Node::Shift(Shift { amount }), node] => Right(vec![
@@ -68,6 +68,14 @@ fn retard_shifts(nodes: [Node; 2]) -> Either<[Node; 2], Vec<Node>> {
             Node::Shift(Shift { amount }),
         ]),
         nodes => Left(nodes),
+    }
+}
+fn sort_ops([n1, n2]: [Node; 2]) -> Either<[Node; 2], Vec<Node>> {
+    // if they commute, and are in the wrong order
+    if Node::commute(&n1, &n2) && n1 > n2 {
+        Right(vec![n2, n1])
+    } else {
+        Left([n1, n2])
     }
 }
 
