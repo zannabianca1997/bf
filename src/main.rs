@@ -18,7 +18,7 @@ use clap::{Parser, ValueEnum};
 enum Cli {
     /// Run the program
     Run {
-        /// Run the program with no optimizations
+        /// Run the program directly with no optimizations
         #[clap(long)]
         raw: bool,
         /// Input stream type
