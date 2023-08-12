@@ -346,7 +346,7 @@ pub fn write_ir<'d>(
 mod tests {
     use std::assert_matches::assert_matches;
 
-    use super::{parse, Content, File, Format, Header, Payload};
+    use super::{parse, Content, File, Header, Payload};
 
     #[test]
     fn parse_source() {

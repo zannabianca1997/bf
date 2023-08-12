@@ -1,7 +1,7 @@
 use std::{
     collections::VecDeque,
-    fs::{self, File},
-    io::{self, stdin, stdout, Read, StdinLock, Write},
+    fs::File,
+    io::{self, stdin, stdout, Write},
     path::PathBuf,
 };
 
