@@ -67,7 +67,7 @@ impl Content {
 pub enum Format {
     #[default]
     Json,
-    CBOR,
+    Binary,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -152,8 +152,8 @@ pub enum ParseFileError {
     HeaderNotUtf8(#[source] std::str::Utf8Error),
     #[error("Error while parsing yaml header")]
     Header(#[source] serde_yaml::Error),
-    #[error("Error while parsing CBOR ir representation")]
-    InvalidCBORIr(#[source] ciborium::de::Error<std::io::Error>),
+    #[error("Error while parsing binary ir representation")]
+    InvalidBinaryIr(#[source] bincode::error::DecodeError),
     #[error("Error while parsing Json ir representation")]
     InvalidJsonIr(#[source] serde_json::Error),
 }
@@ -219,8 +219,10 @@ pub fn parse(mut source: impl io::Read) -> Result<File, ParseFileError> {
                 Format::Json => {
                     serde_json::from_slice(payload).map_err(ParseFileError::InvalidJsonIr)?
                 }
-                Format::CBOR => {
-                    ciborium::from_reader(payload).map_err(ParseFileError::InvalidCBORIr)?
+                Format::Binary => {
+                    bincode::decode_from_slice(payload, bincode::config::standard())
+                        .map_err(ParseFileError::InvalidBinaryIr)?
+                        .0
                 }
             }),
         };
@@ -282,17 +284,18 @@ pub fn write_source<'d>(
         content: Content::Source,
     })
     .unwrap();
+    assert!(header.ends_with('\n'));
 
     dest.write_all(&MAGIC)?;
     if compressed {
         write!(dest, "c")?;
         let mut dest = flate2::write::DeflateEncoder::new(dest, flate2::Compression::best());
-        write!(dest, "\n---\n{header}\n...\n")?;
+        write!(dest, "\n---\n{header}...\n")?;
         write!(dest, "{}", source.as_ref())?;
         dest.finish()?;
     } else {
         write!(dest, "p")?;
-        write!(dest, "\n---\n{header}\n...\n")?;
+        write!(dest, "\n---\n{header}...\n")?;
         write!(dest, "{}", source.as_ref())?;
     }
     Ok(())
@@ -312,30 +315,38 @@ pub fn write_ir<'d>(
         content: Content::Ir { format },
     })
     .unwrap();
+    assert!(header.ends_with('\n'));
 
     dest.write_all(&MAGIC)?;
     if compressed {
         write!(dest, "c")?;
         let mut dest = flate2::write::DeflateEncoder::new(dest, flate2::Compression::best());
-        write!(dest, "\n---\n{header}\n...\n")?;
+        write!(dest, "\n---\n{header}...\n")?;
         match format {
             Format::Json => serde_json::to_writer(&mut dest, ir)?,
-            Format::CBOR => {
-                let mut buf = vec![];
-                ciborium::into_writer(ir, &mut buf).expect("The ir should be always dumpable");
-                dest.write_all(&buf)?;
+            Format::Binary => {
+                bincode::encode_into_std_write(ir, &mut dest, bincode::config::standard())
+                    .map_err(|err| match err {
+                        bincode::error::EncodeError::Io { inner, .. } => inner,
+                        _ => panic!("ir tree should always be dumpable"),
+                    })?;
             }
         }
         dest.finish()?;
     } else {
         write!(dest, "p")?;
-        write!(dest, "\n---\n{header}\n...\n")?;
+        write!(dest, "\n---\n{header}...\n")?;
         match format {
-            Format::Json => serde_json::to_writer(&mut dest, ir)?,
-            Format::CBOR => {
-                let mut buf = vec![];
-                ciborium::into_writer(ir, &mut buf).expect("The ir should be always dumpable");
-                dest.write_all(&buf)?;
+            Format::Json => {
+                serde_json::to_writer_pretty(&mut dest, ir)?;
+                writeln!(dest)?;
+            }
+            Format::Binary => {
+                bincode::encode_into_std_write(ir, &mut dest, bincode::config::standard())
+                    .map_err(|err| match err {
+                        bincode::error::EncodeError::Io { inner, .. } => inner,
+                        _ => panic!("ir tree should always be dumpable"),
+                    })?;
             }
         }
     }

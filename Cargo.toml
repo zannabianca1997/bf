@@ -12,7 +12,7 @@ harness = false
 
 [dependencies]
 anyhow = "1.0.72"
-ciborium = "0.2.1"
+bincode = "2.0.0-rc.3"
 clap = { version = "4.3.21", features = ["derive"] }
 either = "1.9.0"
 flate2 = "1.0.26"

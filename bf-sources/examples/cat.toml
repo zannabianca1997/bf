@@ -1,0 +1,6 @@
+[empty]
+in = "\n"
+out = "\n"
+[hello]
+in = "Hello World!\n"
+out = "Hello World!\n"

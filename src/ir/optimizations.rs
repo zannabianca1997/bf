@@ -10,8 +10,12 @@ use either::Either::{self, Left, Right};
 use super::{Add, Loop, Node, Shift};
 
 const OPTIMIZATIONS_1: &[fn([Node; 1]) -> Either<[Node; 1], Vec<Node>>] = &[recurse, remove_noops];
-const OPTIMIZATIONS_2: &[fn([Node; 2]) -> Either<[Node; 2], Vec<Node>>] =
-    &[collate, retard_shifts, sort_ops];
+const OPTIMIZATIONS_2: &[fn([Node; 2]) -> Either<[Node; 2], Vec<Node>>] = &[
+    merge_instruction,
+    defer_shifts,
+    sort_ops,
+    remove_around_diverge,
+];
 
 fn recurse(node: [Node; 1]) -> Either<[Node; 1], Vec<Node>> {
     match node {
@@ -32,7 +36,7 @@ fn remove_noops(node: [Node; 1]) -> Either<[Node; 1], Vec<Node>> {
     }
 }
 
-fn collate(nodes: [Node; 2]) -> Either<[Node; 2], Vec<Node>> {
+fn merge_instruction(nodes: [Node; 2]) -> Either<[Node; 2], Vec<Node>> {
     match nodes {
         // collating all shifts
         [Node::Shift(Shift { amount: a1 }), Node::Shift(Shift { amount: a2 })] => {
@@ -61,7 +65,7 @@ fn collate(nodes: [Node; 2]) -> Either<[Node; 2], Vec<Node>> {
         nodes => Left(nodes),
     }
 }
-fn retard_shifts(nodes: [Node; 2]) -> Either<[Node; 2], Vec<Node>> {
+fn defer_shifts(nodes: [Node; 2]) -> Either<[Node; 2], Vec<Node>> {
     match nodes {
         [Node::Shift(Shift { amount }), node] => Right(vec![
             node.shifted(amount.get()),
@@ -77,6 +81,17 @@ fn sort_ops([n1, n2]: [Node; 2]) -> Either<[Node; 2], Vec<Node>> {
     } else {
         Left([n1, n2])
     }
+}
+fn remove_around_diverge([n1, n2]: [Node; 2]) -> Either<[Node; 2], Vec<Node>> {
+    if n1.diverge() == Some(true) {
+        // nothing to do after diverging
+        return Right(vec![n1]);
+    }
+    if n2.diverge() == Some(true) && !n1.does_output() {
+        // remove instruction with no side effect before diverging
+        return Right(vec![n2]);
+    }
+    return Left([n1, n2]);
 }
 
 pub(super) fn optimize(nodes: Vec<Node>, changed: &mut bool) -> Vec<Node> {

@@ -219,7 +219,7 @@ fn main() -> anyhow::Result<()> {
                         header.description,
                         match format {
                             Format::Raw => unreachable!(),
-                            Format::Binary => bf::save::Format::CBOR,
+                            Format::Binary => bf::save::Format::Binary,
                             Format::Json => bf::save::Format::Json,
                         },
                     )
@@ -232,7 +232,7 @@ fn main() -> anyhow::Result<()> {
                         header.description,
                         match format {
                             Format::Raw => unreachable!(),
-                            Format::Binary => bf::save::Format::CBOR,
+                            Format::Binary => bf::save::Format::Binary,
                             Format::Json => bf::save::Format::Json,
                         },
                     )

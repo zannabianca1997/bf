@@ -8,6 +8,7 @@ use std::{
     str::FromStr,
 };
 
+use bincode::{Decode, Encode};
 use indenter::indented;
 use serde::{Deserialize, Serialize};
 
@@ -15,7 +16,9 @@ use crate::raw;
 
 mod optimizations;
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+#[derive(
+    Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize, Encode, Decode,
+)]
 pub struct Program(pub Block);
 impl Program {
     fn from_raw(value: crate::raw::Program) -> Program {
@@ -104,7 +107,20 @@ impl FromStr for Program {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Default, Serialize, Deserialize)]
+#[derive(
+    Debug,
+    Clone,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Hash,
+    Default,
+    Serialize,
+    Deserialize,
+    Encode,
+    Decode,
+)]
 pub struct Block(pub Vec<Node>);
 
 impl Block {
@@ -136,7 +152,21 @@ impl IndexMut<usize> for Block {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Default, Serialize, Deserialize)]
+#[derive(
+    Debug,
+    Clone,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Hash,
+    Default,
+    Serialize,
+    Deserialize,
+    Encode,
+    Decode,
+)]
+#[serde(tag = "action")]
 #[non_exhaustive]
 pub enum Node {
     #[default]
@@ -259,7 +289,9 @@ impl Node {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize, Encode, Decode,
+)]
 pub struct Shift {
     pub amount: NonZeroIsize,
 }
@@ -269,7 +301,9 @@ impl Display for Shift {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize, Encode, Decode,
+)]
 pub struct Add {
     pub amount: NonZeroU8,
     pub offset: isize,
@@ -280,7 +314,9 @@ impl Display for Add {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize, Encode, Decode,
+)]
 pub struct Input {
     pub offset: isize,
 }
@@ -290,7 +326,9 @@ impl Display for Input {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize, Encode, Decode,
+)]
 pub struct Output {
     pub offset: isize,
 }
@@ -300,7 +338,9 @@ impl Display for Output {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+#[derive(
+    Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize, Encode, Decode,
+)]
 pub struct Loop {
     pub body: Block,
     pub offset: isize,
